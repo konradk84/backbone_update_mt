@@ -182,23 +182,24 @@ for i, line in enumerate(file_in):
         percent = i / ip_count * 100
         print("---------------- done:  ", int(percent), "% -----------------")
     except paramiko.ssh_exception.AuthenticationException as ssherr:
-        debug(str(ssherr))
-        print (ssherr)
+        log.debug(str(ssherr))
+        #print (ssherr)
         client.close()
     except paramiko.ssh_exception.SSHException as ssherr:
-        debug(str(ssherr))
-        print (ssherr)
+        log.debug(str(ssherr))
+        #print (ssherr)
         client.close()
     except paramiko.ssh_exception.socket.error as ssherr:
-        debug(str(ssherr))
-        print (ssherr)
+        log.debug(str(ssherr))
+        #print (ssherr)
         client.close()
     except paramiko.ssh_exception.BadHostKeyException as ssherr:
-        debug(str(ssherr))
-        print (ssherr)
+        log.debug(str(ssherr))
+        #print (ssherr)
         client.close()
     finally:
         client.close()
+#print ("done")
 log.debug("done")
 	
 	
