@@ -27,6 +27,63 @@ script = script[1:]
 script = script.replace('=/', '="/')
 timeout = 5
 
+def update():
+    if float(version) < 5.26:
+        log.debug('less 5.26')
+        channel.send(upload_526)
+    elif float(version) >= 5.26 and float(version) < 6.38:
+        log.debug('greater or equal 5.26 and less then 6.38')
+        channel.send(upload_6381)
+    elif float(version) >= 6.38 and float(version) < 6.43:
+        log.debug('greater or equal 6.38 and less then 6.43')
+        channel.send(scheduler+'\r\n')
+        time.sleep(2)
+        channel.send(script+'\r\n')
+        time.sleep(2)
+        channel.send(upload_643)                   
+    else:
+        log.debug('case not handled')
+        log.error_log(ip, buf+'\r\ncase not handled\r\n')
+        break
+    #status: finished
+    time.sleep(3)
+    channel_data = bytes()
+    while channel.recv_ready():
+        channel_data += channel.recv(9999)
+        time.sleep(3)
+    #porownujemy wartosci od konca total oraz downloaded by upewnic sie ze pobralismy wszystko
+    buf = channel_data.decode('utf-8')
+    log.debug(buf)
+    total_pos = buf.rfind('total: ')
+    total = buf[total_pos:total_pos+15]
+    total = total.strip('\r\n')
+    downloaded_pos = buf.rfind('downloaded: ')
+    downloaded = buf[downloaded_pos:downloaded_pos+20]
+    downloaded = downloaded.strip('\r\n')
+    downloaded = downloaded.replace('downloaded: ', 'total: ')
+    log.debug(total)
+    log.debug(downloaded)
+    #if buf_str.find('status: finished') != -1 and buf_str.endswith('] > ') == True:
+    if total == '':
+        log.debug('@@@ total jest pusty @@@')
+    if downloaded == total and total != '':
+        log.debug(buf)
+        log.debug('paczka pobrana\n')
+    if is750():
+        log.debug('spimy 90s')
+        time.sleep(90)
+        long_sleep = True
+
+def is750():
+
+
+def clean_flags():
+    long_sleep = False
+    quit_loop = True
+    get_version = False
+    send_get_version = False    
+
+
 def file_len(ip_list):
     with open(ip_list) as f:
         for i, l in enumerate(f):
@@ -47,6 +104,7 @@ for i, line in enumerate(file_in):
         prompt = False
         get_version = False
         send_get_version = False
+        long_sleep = False
         buf_ip = line
         ip = buf_ip.strip( '\n' )
 
@@ -85,96 +143,31 @@ for i, line in enumerate(file_in):
                         
                         get_version = True
                         log.debug(version)
-
                     if get_version == False and send_get_version == False:
                         log.debug('Checking version')
                         channel.send("system resource print\r\n")
                         send_get_version = True
                     if get_version == True:
                         log.debug('Got version, updating')
-                        if float(version) < 5.26:
-                            log.debug('less 5.26')
-                            channel.send(upload_526)
-                        elif float(version) >= 5.26 and float(version) < 6.38:
-                            log.debug('greater or equal 5.26 and less then 6.38')
-                            channel.send(upload_6381)
-                        elif float(version) >= 6.38 and float(version) < 6.43:
-                            log.debug('greater or equal 6.38 and less then 6.43')
-                            channel.send(scheduler+'\r\n')
-                            time.sleep(2)
-                            channel.send(script+'\r\n')
-                            time.sleep(2)
-                            channel.send(upload_643)                   
-                        else:
-                            log.debug('case not handled')
-                            log.error_log(ip, buf+'\r\ncase not handled\r\n')
-                        #status: finished
-                        time.sleep(3)
-                        channel_data = bytes()
-                        
-                        while channel.recv_ready():
-                            channel_data += channel.recv(9999)
-                            #print('channel_data: ', channel_data)
-                            time.sleep(3)
-                        #porownujemy wartosci od konca total oraz downloaded by upewnic sie ze pobralismy wszystko
-                        buf = channel_data.decode('utf-8')
-                        log.debug(buf)
-                        total_pos = buf.rfind('total: ')
-                        total = buf[total_pos:total_pos+15]
-                        total = total.strip('\r\n')
-                        downloaded_pos = buf.rfind('downloaded: ')
-                        downloaded = buf[downloaded_pos:downloaded_pos+20]
-                        downloaded = downloaded.strip('\r\n')
-                        downloaded = downloaded.replace('downloaded: ', 'total: ')
-                        log.debug('total i downloaded:')
-                        log.debug(total)
-                        log.debug(downloaded)
-                        if total == '':
-                            log.debug('@@@ total jest pusty @@@')
-                        if downloaded == total and total != '':
-                            log.debug(buf)
-                            log.debug('paczka pobrana\n')
-                        
-                        #find 750 in model
-                        channel.send("/system routerboard print\r\n")
-                        channel_data = bytes()
-                        time.sleep(2)
-                        while channel.recv_ready(): #bug
-                            channel_data += channel.recv(9999)
-                            log.debug(str(channel_data))
-                            time.sleep(4)
-                        buf = channel_data.decode('utf-8')    
-                        log.debug(buf)
-                        if buf.find('750UP') != -1:
-                            log.debug('jest 750UP')
-                            time.sleep(120)
-                            channel.send('system reboot\r\n')
-                            time.sleep(120)
-                            log.debug('wyspany')
-                        else:
-                            log.debug('nie jest 750UP')
-                            channel.send('system reboot\r\n')
-                        
+                        update()
+
+
+                        '''
                         channel_data = bytes()
                         channel.send('quit\r\n')
-                        quit_loop = True
-                        get_version = False
+                        clean_flags()
                         break
-
+                        '''
                     if buf.find('bad command name') != -1:
                         log.debug('bad command name')
                         log.error_log(ip, buf+'\r\nbad command name\r\n')
-                        quit_loop = True
-                        get_version = False
-                        send_get_version = False
+                        clean_flags()
                         break   
             log.debug("t/o")
             if(int(time.time()) > now + 60):
                 log.debug('timeout 60 s')
                 log.error_log(ip, 'timeout 60 s')
-                quit_loop = True
-                get_version = False
-                send_get_version = False
+                clean_flags()
                 break   
         percent = i / ip_count * 100
         print("---------------- done:  ", int(percent), "% -----------------")
