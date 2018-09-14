@@ -94,24 +94,24 @@ for i, line in enumerate(file_in):
                         log.debug('Got version, updating')
                         if float(version) < 5.26:
                             log.debug('less 5.26')
-                            #channel.send(upload_526)
+                            channel.send(upload_526)
                         elif float(version) >= 5.26 and float(version) < 6.38:
                             log.debug('greater or equal 5.26 and less then 6.38')
-                            #channel.send(upload_6381)
+                            channel.send(upload_6381)
                         elif float(version) >= 6.38 and float(version) < 6.43:
                             log.debug('greater or equal 6.38 and less then 6.43')
-                            #channel.send(scheduler+'\r\n')
-                            #time.sleep(2)
-                            #channel.send(script+'\r\n')
-                            #time.sleep(2)
-                            #channel.send(upload_643)                   
+                            channel.send(scheduler+'\r\n')
+                            time.sleep(2)
+                            channel.send(script+'\r\n')
+                            time.sleep(2)
+                            channel.send(upload_643)                   
                         else:
                             log.debug('case not handled')
                             log.error_log(ip, buf+'\r\ncase not handled\r\n')
                         #status: finished
                         time.sleep(3)
                         channel_data = bytes()
-                        '''
+                        
                         while channel.recv_ready():
                             channel_data += channel.recv(9999)
                             #print('channel_data: ', channel_data)
@@ -122,12 +122,10 @@ for i, line in enumerate(file_in):
                         total_pos = buf.rfind('total: ')
                         total = buf[total_pos:total_pos+15]
                         total = total.strip('\r\n')
-                        #print('total: ', total)
                         downloaded_pos = buf.rfind('downloaded: ')
                         downloaded = buf[downloaded_pos:downloaded_pos+20]
                         downloaded = downloaded.strip('\r\n')
                         downloaded = downloaded.replace('downloaded: ', 'total: ')
-                        #print('downloaded: ', downloaded)
                         log.debug('total i downloaded:')
                         log.debug(total)
                         log.debug(downloaded)
@@ -136,7 +134,7 @@ for i, line in enumerate(file_in):
                         if downloaded == total and total != '':
                             log.debug(buf)
                             log.debug('paczka pobrana\n')
-                        '''
+                        
                         #find 750 in model
                         channel.send("/system routerboard print\r\n")
                         channel_data = bytes()
@@ -146,17 +144,16 @@ for i, line in enumerate(file_in):
                             log.debug(str(channel_data))
                             time.sleep(4)
                         buf = channel_data.decode('utf-8')    
-                        print('tu?')
                         log.debug(buf)
                         if buf.find('750UP') != -1:
                             log.debug('jest 750UP')
                             time.sleep(120)
-                            #channel.send('system reboot\r\n')
+                            channel.send('system reboot\r\n')
                             time.sleep(120)
                             log.debug('wyspany')
                         else:
                             log.debug('nie jest 750UP')
-                            #channel.send('system reboot\r\n')
+                            channel.send('system reboot\r\n')
                         
                         channel_data = bytes()
                         channel.send('quit\r\n')
