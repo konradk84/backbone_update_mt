@@ -61,7 +61,7 @@ def downloaded(channel, log):
         if channel in r:
             channel_data += channel.recv(9999)
             buf = channel_data.decode('utf-8')
-            #log.debug(buf)
+            log.debug(buf)
             total_pos = buf.rfind('total: ')
             total = buf[total_pos:total_pos+15]
             total = total.strip('\r\n')
@@ -69,15 +69,15 @@ def downloaded(channel, log):
             downloaded = buf[downloaded_pos:downloaded_pos+20]
             downloaded = downloaded.strip('\r\n')
             downloaded = downloaded.replace('downloaded: ', 'total: ')
-            log.debug(total)
-            log.debug(downloaded)
-            #check empty total case. Meet in some version. Not fully checked, keeping for future bugs.
-            if total == '':
-                log.debug('@@@ total jest pusty @@@')
+            #older version sends finished, but dont show last package data. Compare is not possible.
+            if buf.find('status: finished') != -1 and buf.endswith('] > ') == True:
+                log.debug('finished')
+                log.debug(buf)
+                return True
             #check package download is complete
             if downloaded == total and total != '':
                 log.debug(buf)
-                log.debug('paczka pobrana\n')
+                log.debug('package downloaded\n')
                 return True
         else:
             #in case of broken connection
@@ -89,7 +89,7 @@ def downloaded(channel, log):
 def get_model(channel, log):
     now = int(time.time())
     channel_data = bytes()
-    log.debug('checking 750up')
+    log.debug('checking is 750up model')
     channel.send("/system routerboard print\r\n")
     while True:
         timeout = 5
@@ -98,19 +98,19 @@ def get_model(channel, log):
             channel_data += channel.recv(9999)
             buf = channel_data.decode('utf-8')
             if buf.find('model: ') != -1:
-                log.debug('Got model in buf')
+                log.debug('got model in buf')
                 if buf.find('750UP') != -1:
                     log.debug(buf)
                     #going sleep beffore reboot
-                    log.debug('Got 750up, going sleep for 90s')
+                    log.debug('got 750up, going sleep for 90s')
                     time.sleep(90)
                     return 0
                 else:
                     log.debug(buf)
-                    log.debug('Is not 750up')
+                    log.debug('is not 750up')
                     return 1
             else:
-                log.debug('No model found')
+                log.debug('no model found')
         else:
             #in case of broken connection
             if is_timeout(now):
@@ -128,19 +128,19 @@ def reboot(channel, log):
             channel_data += channel.recv(9999)
             buf = channel_data.decode('utf-8')
             if buf.find('Reboot, yes? [y/N]:') != -1:
-                log.debug('Got reboot question')
+                log.debug('got reboot question')
                 log.debug(buf)
-                if is750 == 0:
-                    log.debug('Going sleep for another 90s')
-                    time.sleep(90)
                 channel.send('n\r\n')
-                log.debug('Send reboot confirmaton')
+                log.debug('sended reboot confirmaton')
+                if is750 == 0:
+                    log.debug('going sleep for another 90s')
+                    time.sleep(90)
                 #we only what do it once, cleaning data
                 channel_data = bytes()
                 '''if we send n as confirmation for debug purposes, uncomment below line to exit reboot function'''
                 return True
             if buf.find('system will reboot shortly') != -1:
-                log.debug('Got reboot confirmation')
+                log.debug('got reboot confirmation')
                 log.debug(buf)
                 #we only what do it once, cleaning data
                 channel_data = bytes()
@@ -208,7 +208,7 @@ for i, line in enumerate(file_in):
                 buf = channel_data.decode('utf-8')
                 if buf.endswith('] > ') == True:
                     log.debug(buf)
-                    log.debug('We found prompt')
+                    log.debug('we found prompt')
                     if buf.find('version: ') != -1 and get_version == False:
                         try:
                             version = Version()
@@ -223,15 +223,15 @@ for i, line in enumerate(file_in):
                         get_version = True
                         log.debug(version)
                     if get_version == False and send_get_version == False:
-                        log.debug('Checking version')
+                        log.debug('checking version')
                         channel.send("system resource print\r\n")
                         send_get_version = True
                     if get_version == True:
-                        log.debug('Got version, updating')
+                        log.debug('got version, updating')
                         if update(channel, log):
                             if downloaded(channel, log):
                                 if reboot(channel, log):
-                                    log.debug('Everythings should go fine ;)')
+                                    log.debug('everythings should go fine ;)')
                                     clean_flags()
                                     break
                         else:
@@ -270,34 +270,5 @@ for i, line in enumerate(file_in):
         client.close()
     finally:
         client.close()
-#print ("done")
 log.debug("done")
 	
-	
-'''	
-if float(version) < 5.26:
-    print(adr, 'ma wersje softu mniejsza niz 5.26\n')
-    ver_content = adr + ' ma wersje softu mniejsza niz 5.26\n'
-    debug(ver_content)
-    #pobierz 5.26
-    channel.send(upload_526)
-elif float(version) < 6.0 and float(version) > 5.25:
-    print(adr, 'ma wersje softu mniejsza niz 6.0, wieksza niz 5.25\n')
-    ver_content = adr + ' ma wersje softu mniejsza niz 6.0, wieksza niz 5.25\n'
-    debug(ver_content)
-    #pobierz 6.0
-    channel.send(upload_6381)
-elif float(version) > 6.0 and float(version) < 6.422: #aktualziacja wersji dziesietnej, brzydkie rozwiazanie
-    print(adr, 'ma wersje softu wieksza niz 6.0\n')
-    ver_content = adr + ' ma wersje softu wieksza niz 6.0\n'
-    debug(ver_content)
-    #pobierz 6.42.3
-    channel.send(upload_6423)
-else:
-    print('wersja wieksza niz 6.42?\n')
-    debug('wersja wieksza niz 6.42?\n')
-    current_version = False
-    client.close()
-    prompt = False #wychodzimy z petli while
-    break
-'''
