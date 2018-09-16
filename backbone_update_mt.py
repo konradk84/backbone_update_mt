@@ -27,7 +27,8 @@ script = script[1:]
 script = script.replace('=/', '="/')
 timeout = 5
 
-def update():
+#based on actual version, we act diffrent way
+def update(channel, log):
     if float(version) < 5.26:
         log.debug('less 5.26')
         channel.send(upload_526)
@@ -36,7 +37,9 @@ def update():
         channel.send(upload_6381)
     elif float(version) >= 6.38 and float(version) < 6.43:
         log.debug('greater or equal 6.38 and less then 6.43')
+        #we need to regenerate ssh key, after update to higher then 6.42.1, in case to keep asccess via ssh
         channel.send(scheduler+'\r\n')
+        #too fast sending commands, cause error. 
         time.sleep(2)
         channel.send(script+'\r\n')
         time.sleep(2)
@@ -44,41 +47,117 @@ def update():
     else:
         log.debug('case not handled')
         log.error_log(ip, buf+'\r\ncase not handled\r\n')
-        break
-    #status: finished
-    time.sleep(3)
+        return False
+    return True
+
+#status: finished
+#some version send "finished" at end of download. Some not, whats why we compare total, and downloaded bytes
+def downloaded(channel, log):
     channel_data = bytes()
-    while channel.recv_ready():
-        channel_data += channel.recv(9999)
-        time.sleep(3)
-    #porownujemy wartosci od konca total oraz downloaded by upewnic sie ze pobralismy wszystko
-    buf = channel_data.decode('utf-8')
-    log.debug(buf)
-    total_pos = buf.rfind('total: ')
-    total = buf[total_pos:total_pos+15]
-    total = total.strip('\r\n')
-    downloaded_pos = buf.rfind('downloaded: ')
-    downloaded = buf[downloaded_pos:downloaded_pos+20]
-    downloaded = downloaded.strip('\r\n')
-    downloaded = downloaded.replace('downloaded: ', 'total: ')
-    log.debug(total)
-    log.debug(downloaded)
-    #if buf_str.find('status: finished') != -1 and buf_str.endswith('] > ') == True:
-    if total == '':
-        log.debug('@@@ total jest pusty @@@')
-    if downloaded == total and total != '':
-        log.debug(buf)
-        log.debug('paczka pobrana\n')
-    if is750():
-        log.debug('spimy 90s')
-        time.sleep(90)
-        long_sleep = True
+    now = int(time.time())
+    while True:
+        timeout = 5
+        r,w,e = select.select([channel], [], [], timeout)
+        if channel in r:
+            channel_data += channel.recv(9999)
+            buf = channel_data.decode('utf-8')
+            #log.debug(buf)
+            total_pos = buf.rfind('total: ')
+            total = buf[total_pos:total_pos+15]
+            total = total.strip('\r\n')
+            downloaded_pos = buf.rfind('downloaded: ')
+            downloaded = buf[downloaded_pos:downloaded_pos+20]
+            downloaded = downloaded.strip('\r\n')
+            downloaded = downloaded.replace('downloaded: ', 'total: ')
+            log.debug(total)
+            log.debug(downloaded)
+            #check empty total case. Meet in some version. Not fully checked, keeping for future bugs.
+            if total == '':
+                log.debug('@@@ total jest pusty @@@')
+            #check package download is complete
+            if downloaded == total and total != '':
+                log.debug(buf)
+                log.debug('paczka pobrana\n')
+                return True
+        else:
+            #in case of broken connection
+            if is_timeout(now):
+                clean_flags()
+                return False
 
-def is750():
+#have to set delay reboot in case of 750up
+def get_model(channel, log):
+    now = int(time.time())
+    channel_data = bytes()
+    log.debug('checking 750up')
+    channel.send("/system routerboard print\r\n")
+    while True:
+        timeout = 5
+        r,w,e = select.select([channel], [], [], timeout)
+        if channel in r:
+            channel_data += channel.recv(9999)
+            buf = channel_data.decode('utf-8')
+            if buf.find('model: ') != -1:
+                log.debug('Got model in buf')
+                if buf.find('750UP') != -1:
+                    log.debug(buf)
+                    #going sleep beffore reboot
+                    log.debug('Got 750up, going sleep for 90s')
+                    time.sleep(90)
+                    return 0
+                else:
+                    log.debug(buf)
+                    log.debug('Is not 750up')
+                    return 1
+            else:
+                log.debug('No model found')
+        else:
+            #in case of broken connection
+            if is_timeout(now):
+                return -1
 
+def reboot(channel, log):
+    now = int(time.time())
+    channel_data = bytes()
+    is750 = get_model(channel, log)
+    channel.send('/system reboot\r\n')
+    while True:
+        timeout = 5
+        r,w,e = select.select([channel], [], [], timeout)
+        if channel in r:
+            channel_data += channel.recv(9999)
+            buf = channel_data.decode('utf-8')
+            if buf.find('Reboot, yes? [y/N]:') != -1:
+                log.debug('Got reboot question')
+                log.debug(buf)
+                if is750 == 0:
+                    log.debug('Going sleep for another 90s')
+                    time.sleep(90)
+                channel.send('n\r\n')
+                log.debug('Send reboot confirmaton')
+                #we only what do it once, cleaning data
+                channel_data = bytes()
+                '''if we send n as confirmation for debug purposes, uncomment below line to exit reboot function'''
+                return True
+            if buf.find('system will reboot shortly') != -1:
+                log.debug('Got reboot confirmation')
+                log.debug(buf)
+                #we only what do it once, cleaning data
+                channel_data = bytes()
+                return True
+        else:
+            if is_timeout(now):
+                clean_flags()
+                return False
+
+def is_timeout(now):
+    if(int(time.time()) > now + 60):
+        log.debug(str(now))
+        log.debug('timeout 60 s')
+        log.error_log(ip, 'timeout 60 s')
+        return True
 
 def clean_flags():
-    long_sleep = False
     quit_loop = True
     get_version = False
     send_get_version = False    
@@ -149,26 +228,28 @@ for i, line in enumerate(file_in):
                         send_get_version = True
                     if get_version == True:
                         log.debug('Got version, updating')
-                        update()
-
-
-                        '''
-                        channel_data = bytes()
-                        channel.send('quit\r\n')
-                        clean_flags()
-                        break
-                        '''
+                        if update(channel, log):
+                            if downloaded(channel, log):
+                                if reboot(channel, log):
+                                    log.debug('Everythings should go fine ;)')
+                                    clean_flags()
+                                    break
+                        else:
+                            channel_data = bytes()
+                            channel.send('quit\r\n')
+                            clean_flags()
+                            break
+                        
                     if buf.find('bad command name') != -1:
                         log.debug('bad command name')
                         log.error_log(ip, buf+'\r\nbad command name\r\n')
                         clean_flags()
                         break   
             log.debug("t/o")
-            if(int(time.time()) > now + 60):
-                log.debug('timeout 60 s')
-                log.error_log(ip, 'timeout 60 s')
+            if is_timeout(now):
                 clean_flags()
-                break   
+                break
+               
         percent = i / ip_count * 100
         print("---------------- done:  ", int(percent), "% -----------------")
     except paramiko.ssh_exception.AuthenticationException as ssherr:
