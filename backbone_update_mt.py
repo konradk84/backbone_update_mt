@@ -168,9 +168,10 @@ def file_len(ip_list):
             pass
     return i + 1
 
-file = ip_list.strip('.txt')
-file_debug = file + '_' + cfg[config]['DEBUG_FILE']
-file_error = file + '_' + cfg[config]['ERROR_FILE']
+file = ip_list.replace('.txt', '')
+#if file name last char beffore dot is t, then its cutted. Dont know why.
+file_debug = file + '-' + cfg[config]['DEBUG_FILE']
+file_error = file + '-' + cfg[config]['ERROR_FILE']
 log = Log(file_debug, file_error)
 
 print(ip_list)
