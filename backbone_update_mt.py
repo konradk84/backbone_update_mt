@@ -129,7 +129,7 @@ def reboot(channel, log):
             if buf.find('Reboot, yes? [y/N]:') != -1:
                 log.debug('got reboot question')
                 log.debug(buf)
-                channel.send('n\r\n')
+                channel.send('y\r\n')
                 log.debug('sended reboot confirmaton')
                 if is750 == 0:
                     log.debug('going sleep for another 90s')
@@ -137,7 +137,7 @@ def reboot(channel, log):
                 #we only what do it once, cleaning data
                 channel_data = bytes()
                 '''if we send n as confirmation for debug purposes, uncomment below line to exit reboot function. Otherwise comment it, so we can pass to next if condition'''
-                return True
+                #return True
             if buf.find('system will reboot shortly') != -1:
                 log.debug('got reboot confirmation')
                 log.debug(buf)
