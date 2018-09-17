@@ -180,10 +180,8 @@ file_in = open(ip_list, 'r')
 for i, line in enumerate(file_in):
     try:
         quit_loop = False
-        prompt = False
         get_version = False
         send_get_version = False
-        long_sleep = False
         buf_ip = line
         ip = buf_ip.strip( '\n' )
 
@@ -231,7 +229,7 @@ for i, line in enumerate(file_in):
                         if update(channel, log):
                             if downloaded(channel, log):
                                 if reboot(channel, log):
-                                    log.debug('everythings should go fine ;)')
+                                    log.debug('everything should go fine ;)')
                                     clean_flags()
                                     break
                         else:
