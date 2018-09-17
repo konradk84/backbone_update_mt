@@ -72,11 +72,11 @@ def downloaded(channel, log):
             #older version sends finished, but dont show last package data. Compare is not possible.
             if buf.find('status: finished') != -1 and buf.endswith('] > ') == True:
                 log.debug('finished')
-                log.debug(buf)
+                #log.debug(buf)
                 return True
             #check package download is complete
             if downloaded == total and total != '':
-                log.debug(buf)
+                #log.debug(buf)
                 log.debug('package downloaded\n')
                 return True
         else:
@@ -99,14 +99,13 @@ def get_model(channel, log):
             buf = channel_data.decode('utf-8')
             if buf.find('model: ') != -1:
                 log.debug('got model in buf')
+                log.debug(buf)
                 if buf.find('750UP') != -1:
-                    log.debug(buf)
                     #going sleep beffore reboot
                     log.debug('got 750up, going sleep for 90s')
                     time.sleep(90)
                     return 0
                 else:
-                    log.debug(buf)
                     log.debug('is not 750up')
                     return 1
             else:
@@ -137,7 +136,7 @@ def reboot(channel, log):
                     time.sleep(90)
                 #we only what do it once, cleaning data
                 channel_data = bytes()
-                '''if we send n as confirmation for debug purposes, uncomment below line to exit reboot function'''
+                '''if we send n as confirmation for debug purposes, uncomment below line to exit reboot function. Otherwise comment it, so we can pass to next if condition'''
                 return True
             if buf.find('system will reboot shortly') != -1:
                 log.debug('got reboot confirmation')
