@@ -61,7 +61,7 @@ def downloaded(channel, log):
         if channel in r:
             channel_data += channel.recv(9999)
             buf = channel_data.decode('utf-8')
-            log.debug(buf)
+            #log.debug(buf) mocno smieci output
             total_pos = buf.rfind('total: ')
             total = buf[total_pos:total_pos+15]
             total = total.strip('\r\n')
@@ -72,11 +72,11 @@ def downloaded(channel, log):
             #older version sends finished, but dont show last package data. Compare is not possible.
             if buf.find('status: finished') != -1 and buf.endswith('] > ') == True:
                 log.debug('finished')
-                #log.debug(buf)
+                log.debug(buf)
                 return True
             #check package download is complete
             if downloaded == total and total != '':
-                #log.debug(buf)
+                log.debug(buf)
                 log.debug('package downloaded\n')
                 return True
         else:
